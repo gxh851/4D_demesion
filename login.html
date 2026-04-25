@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>灵境星桥 - 登录</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a4a4a 0%, #0e2a2a 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .login-container {
+            background: white;
+            border-radius: 40px;
+            padding: 48px 40px;
+            width: 100%;
+            max-width: 440px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+            text-align: center;
+        }
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #1E6F5C, #289672);
+            border-radius: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+        }
+        .logo i { font-size: 40px; color: white; }
+        h1 {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #1E6F5C, #289672);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 8px;
+        }
+        .subtitle { color: #666; margin-bottom: 32px; font-size: 14px; }
+        .role-selector {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 24px;
+            background: #f1f5f9;
+            border-radius: 60px;
+            padding: 4px;
+        }
+        .role-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: transparent;
+            border-radius: 60px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #666;
+        }
+        .role-btn.active {
+            background: #289672;
+            color: white;
+            box-shadow: 0 2px 8px rgba(40,150,114,0.3);
+        }
+        .input-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 16px;
+            font-size: 15px;
+            transition: all 0.2s;
+        }
+        .input-group input:focus {
+            outline: none;
+            border-color: #289672;
+        }
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(95deg, #1E6F5C, #289672);
+            border: none;
+            border-radius: 60px;
+            font-size: 16px;
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+            margin-top: 12px;
+            transition: transform 0.2s;
+        }
+        .login-btn:hover { transform: scale(1.02); }
+        .demo-hint {
+            margin-top: 24px;
+            padding: 16px;
+            background: #f0fdf4;
+            border-radius: 16px;
+            font-size: 13px;
+            color: #166534;
+        }
+        .error-msg {
+            background: #fee2e2;
+            color: #dc2626;
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            display: none;
+        }
+        .loading { opacity: 0.7; pointer-events: none; }
+    </style>
+</head>
+<body>
+<div class="login-container">
+    <div class="logo">
+        <i class="fas fa-cube"></i>
+    </div>
+    <h1>灵境星桥</h1>
+    <p class="subtitle">4D动态康复场景生成器</p>
+
+    <div class="role-selector">
+        <button class="role-btn active" data-role="therapist">👩‍⚕️ 治疗师</button>
+        <button class="role-btn" data-role="child">🧒 患儿</button>
+    </div>
+
+    <div id="errorMsg" class="error-msg"></div>
+
+    <div class="input-group">
+        <label><i class="fas fa-user"></i> 用户名</label>
+        <input type="text" id="username" placeholder="请输入用户名">
+    </div>
+    <div class="input-group">
+        <label><i class="fas fa-lock"></i> 密码</label>
+        <input type="password" id="password" placeholder="请输入密码">
+    </div>
+
+    <button id="loginBtn" class="login-btn">登 录</button>
+
+    <div class="demo-hint">
+        <i class="fas fa-info-circle"></i> 演示账号（任意密码均可登录）<br>
+        治疗师：therapist1 / 任意密码<br>
+        患儿：小明 / 任意密码 &nbsp;|&nbsp; 小红 / 任意密码
+    </div>
+</div>
+
+<script>
+    let selectedRole = "therapist";
+
+    // 角色切换
+    document.querySelectorAll('.role-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            selectedRole = btn.dataset.role;
+        });
+    });
+
+    function showError(msg) {
+        const errorDiv = document.getElementById('errorMsg');
+        errorDiv.textContent = msg;
+        errorDiv.style.display = 'block';
+        setTimeout(() => { errorDiv.style.display = 'none'; }, 3000);
+    }
+
+    async function login() {
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value;
+
+        if (!username || !password) {
+            showError('请填写用户名和密码');
+            return;
+        }
+
+        const btn = document.getElementById('loginBtn');
+        btn.classList.add('loading');
+        btn.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> 登录中...';
+
+        // 模拟登录延迟（让体验更真实）
+        setTimeout(() => {
+            // 根据用户名判断角色
+            let role = 'child';
+            if (username === 'therapist1') {
+                role = 'therapist';
+            }
+
+            // 构建模拟用户数据
+            const mockUser = {
+                user_id: username === 'therapist1' ? 1 : 2,
+                username: username,
+                role: role,
+                child_name: username === 'therapist1' ? null : username,
+                therapist_id: username === 'therapist1' ? null : 1,
+                progress: { bus: 30, supermarket: 20, classroom: 0, park: 0, garden: 0 }
+            };
+
+            // 保存登录信息
+            localStorage.setItem('token', 'mock_token_' + Date.now());
+            localStorage.setItem('user', JSON.stringify(mockUser));
+
+            // 跳转到主页面
+            window.location.href = 'index.html';
+
+            btn.classList.remove('loading');
+            btn.innerHTML = '登 录';
+        }, 500);
+    }
+
+    document.getElementById('loginBtn').addEventListener('click', login);
+    document.getElementById('password').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') login();
+    });
+</script>
+</body>
+</html>
