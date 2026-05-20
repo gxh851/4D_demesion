@@ -1,3 +1,5 @@
+<!-- AI辅助生成：星语视界 4D动态康复场景前端主页面 -->
+<!-- AI辅助生成：DeepSeek Chat, 2026-04-01 -->
 <!DOCTYPE html>
 <html lang="zh-CN">
 
@@ -13,19 +15,19 @@
     <!-- 原有自动表格插件（保留不动） -->
     <script src="https://cdn.bootcdn.net/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <!-- ✅ 替换成这个字体文件（解决点击没反应+中文乱码） -->
-    <!--<script src="https://unpkg.com/jspdf-customfonts/dist/jspdf.customfonts.min.js"></script>-->
+    <script src="https://unpkg.com/jspdf-customfonts/dist/jspdf.customfonts.min.js"></script>
     <!-- 加载宋体字体（本地映射，无需额外下载） -->
-    <!--<script>-->
-    <!--// 提前定义中文字体映射，避免加载失败-->
-    <!--window.fonts = {-->
-    <!--    "SimSun": {-->
-    <!--        "normal": "SimSun.ttf",-->
-    <!--        "bold": "SimSun.ttf",-->
-    <!--        "italics": "SimSun.ttf",-->
-    <!--        "bolditalics": "SimSun.ttf"-->
-    <!--    }-->
-    <!--};-->
-    <!--</script>-->
+    <script>
+        // 提前定义中文字体映射，避免加载失败
+        window.fonts = {
+            "SimSun": {
+                "normal": "SimSun.ttf",
+                "bold": "SimSun.ttf",
+                "italics": "SimSun.ttf",
+                "bolditalics": "SimSun.ttf"
+            }
+        };
+    </script>
     <style>
         * {
             margin: 0;
@@ -792,47 +794,79 @@
     </div>
 
     <script>
-        // ==================== 修复：移除重复的<script>标签，合并所有JS代码 ====================
-        // ==================== 后端配置 ====================
-        const API_BASE = "https://f4d-rehab-api-250853-6-1425865499.sh.run.tcloudbase.com";
+        // AI辅助生成：登录与权限控制
+        // ==================== 登录检查 ====================
+        const API_BASE = "http://localhost:8000";
         let token = localStorage.getItem('token');
         const userStr = localStorage.getItem('user');
 
-        // 修复：如果未登录或登录信息无效，跳转到登录页（但防止死循环，检查当前是否已在login.html）
         if (!token || !userStr) {
-            if (!window.location.href.includes('login.html')) {
-                window.location.href = 'login.html';
+            window.location.href = 'login.html';
+        }
+
+        const currentUser = JSON.parse(userStr);
+        console.log('当前用户:', currentUser);
+
+        // 显示用户名
+        document.getElementById('userName').innerText = currentUser.role === 'therapist' ?
+            `治疗师: ${currentUser.username}` : `患儿: ${currentUser.child_name || currentUser.username}`;
+
+        // 退出登录
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = 'login.html';
+        });
+
+        // 根据角色显示/隐藏界面元素
+        function initByRole() {
+            if (currentUser.role === 'child') {
+                // 患儿模式：隐藏评估模块
+                const assessmentSection = document.getElementById('assessmentSection');
+                if (assessmentSection) {
+                    assessmentSection.style.display = 'none';
+                }
+                // 更新患儿进度
+                if (currentUser.progress) {
+                    Object.assign(completion, currentUser.progress);
+                    if (completion[currentScene]) {
+                        completionSpan.innerText = completion[currentScene];
+                    }
+                }
+            } else {
+                // 治疗师模式：显示评估模块
+                const assessmentSection = document.getElementById('assessmentSection');
+                if (assessmentSection) {
+                    assessmentSection.style.display = 'block';
+                }
             }
         }
 
-        // 安全解析user对象，避免因为localStorage数据损坏导致整个页面无法运行
-        let currentUser = null;
-        try {
-            currentUser = userStr ? JSON.parse(userStr) : { role: 'therapist', username: '测试用户', user_id: 1, child_name: '' };
-        } catch (e) {
-            console.error("解析用户信息失败，使用默认值", e);
-            currentUser = { role: 'therapist', username: '测试用户', user_id: 1, child_name: '' };
-        }
-        console.log('当前用户:', currentUser);
 
-        // 显示用户名 - 添加安全检查
-        const userNameSpan = document.getElementById('userName');
-        if (userNameSpan) {
-            userNameSpan.innerText = currentUser.role === 'therapist' ?
-                `治疗师: ${currentUser.username || '未知'}` : `患儿: ${currentUser.child_name || currentUser.username || '未知'}`;
-        }
-
-        // 退出登录
-        const logoutBtn = document.getElementById('logoutBtn');
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', () => {
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
-                window.location.href = 'login.html';
-            });
+        async function loadChildList() {
+            try {
+                const response = await fetch(`${API_BASE}/api/child-list/${currentUser.user_id}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                if (data.success && data.children.length > 0) {
+                    const childSelector = document.createElement('div');
+                    childSelector.className = 'child-selector';
+                    childSelector.innerHTML = `
+                    <label>选择患儿：</label>
+                    <select id="childSelect">
+                        ${data.children.map(c => `<option value="${c.user_id}">${c.child_name || c.username}</option>`).join('')}
+                    </select>
+                `;
+                    document.querySelector('.header').appendChild(childSelector);
+                }
+            } catch (error) {
+                console.error('加载患儿列表失败:', error);
+            }
         }
 
-        // ==================== 视频场景配置 ====================
+        // AI辅助生成：4D场景视频播放与视角切换
+        // ==================== 视频场景功能 ====================
         const sceneVideoPath = {
             bus: "bus.mp4",
             supermarket: "shop.mp4",
@@ -876,7 +910,6 @@
         const feedbackMsg = document.getElementById('interactionFeedback');
         const sceneNameDisplay = document.getElementById('sceneNameDisplay');
 
-        // ==================== 辅助函数 ====================
         function getCurrentViewTime(view) {
             const sceneTimes = sceneViewTime[currentScene];
             if (sceneTimes && sceneTimes[view] !== undefined) return sceneTimes[view];
@@ -892,31 +925,27 @@
                 btn.classList.toggle('active', btn.dataset.view === view);
             });
             addLog('view_switch', `切换到${view}视角`);
-            if (feedbackMsg) {
-                feedbackMsg.innerHTML = `👀 切换到${view}视角`;
-                setTimeout(() => { if (feedbackMsg.innerHTML === `👀 切换到${view}视角`) feedbackMsg.innerHTML = ''; }, 1500);
-            }
+            feedbackMsg.innerHTML = `👀 切换到${view}视角`;
+            setTimeout(() => { if (feedbackMsg.innerHTML === `👀 切换到${view}视角`) feedbackMsg.innerHTML = ''; }, 1500);
         }
 
         function switchScene(scene) {
             currentScene = scene;
             const newVideoPath = sceneVideoPath[scene];
-            if (newVideoPath && video) {
+            if (newVideoPath) {
                 video.src = newVideoPath;
                 video.load();
                 video.onloadeddata = () => jumpToView(currentView);
             }
-            if (taskTextEl) taskTextEl.innerHTML = `🎯 ${sceneTask[scene]}`;
-            if (completionSpan) completionSpan.innerText = completion[scene] || 0;
-            if (sceneNameDisplay) sceneNameDisplay.innerHTML = `<i class="fas fa-cube"></i> ${sceneDisplayName[scene]} | 4D动态场景`;
+            taskTextEl.innerHTML = `🎯 ${sceneTask[scene]}`;
+            completionSpan.innerText = completion[scene] || 0;
+            sceneNameDisplay.innerHTML = `<i class="fas fa-cube"></i> ${sceneDisplayName[scene]} | 4D动态场景`;
             document.querySelectorAll('.scene-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.scene === scene);
             });
             addLog('scene_switch', `切换到${scene}场景`);
-            if (feedbackMsg) {
-                feedbackMsg.innerHTML = `🎬 已切换到${sceneDisplayName[scene]}`;
-                setTimeout(() => { if (feedbackMsg.innerHTML === `🎬 已切换到${sceneDisplayName[scene]}`) feedbackMsg.innerHTML = ''; }, 1500);
-            }
+            feedbackMsg.innerHTML = `🎬 已切换到${sceneDisplayName[scene]}`;
+            setTimeout(() => { if (feedbackMsg.innerHTML === `🎬 已切换到${sceneDisplayName[scene]}`) feedbackMsg.innerHTML = ''; }, 1500);
         }
 
         function addLog(action, detail) {
@@ -928,11 +957,9 @@
             let old = completion[currentScene] || 0;
             let newVal = Math.min(old + 20, 100);
             completion[currentScene] = newVal;
-            if (completionSpan) completionSpan.innerText = newVal;
-            if (feedbackMsg) {
-                feedbackMsg.innerHTML = '🎉 太棒了！任务完成！继续加油～';
-                setTimeout(() => { if (feedbackMsg.innerHTML === '🎉 太棒了！任务完成！继续加油～') feedbackMsg.innerHTML = ''; }, 2500);
-            }
+            completionSpan.innerText = newVal;
+            feedbackMsg.innerHTML = '🎉 太棒了！任务完成！继续加油～';
+            setTimeout(() => { if (feedbackMsg.innerHTML === '🎉 太棒了！任务完成！继续加油～') feedbackMsg.innerHTML = ''; }, 2500);
             addLog('task_complete', `完成度${newVal}%`);
 
             if (currentUser.role === 'child') {
@@ -959,16 +986,14 @@
         function resetProgress() {
             completion = { bus: 0, supermarket: 0, classroom: 0, park: 0, garden: 0 };
             localStorage.setItem('scene_completion', JSON.stringify(completion));
-            if (completionSpan) completionSpan.innerText = 0;
+            completionSpan.innerText = 0;
             addLog('reset', '所有场景进度已重置');
-            if (feedbackMsg) {
-                feedbackMsg.innerHTML = '🔄 所有进度已重置';
-                setTimeout(() => { if (feedbackMsg.innerHTML === '🔄 所有进度已重置') feedbackMsg.innerHTML = ''; }, 2000);
-            }
+            feedbackMsg.innerHTML = '🔄 所有进度已重置';
+            setTimeout(() => { if (feedbackMsg.innerHTML === '🔄 所有进度已重置') feedbackMsg.innerHTML = ''; }, 2000);
         }
 
-        function pauseVideo() { if (video) { video.pause(); addLog('video_control', '暂停视频'); if (feedbackMsg) { feedbackMsg.innerHTML = '⏸️ 视频已暂停'; setTimeout(() => { if (feedbackMsg.innerHTML === '⏸️ 视频已暂停') feedbackMsg.innerHTML = ''; }, 1000); } } }
-        function playVideo() { if (video) { video.play().catch(e => console.log("播放需要用户交互")); addLog('video_control', '播放视频'); if (feedbackMsg) { feedbackMsg.innerHTML = '▶️ 视频已播放'; setTimeout(() => { if (feedbackMsg.innerHTML === '▶️ 视频已播放') feedbackMsg.innerHTML = ''; }, 1000); } } }
+        function pauseVideo() { if (video) { video.pause(); addLog('video_control', '暂停视频'); feedbackMsg.innerHTML = '⏸️ 视频已暂停'; setTimeout(() => { if (feedbackMsg.innerHTML === '⏸️ 视频已暂停') feedbackMsg.innerHTML = ''; }, 1000); } }
+        function playVideo() { if (video) { video.play().catch(e => console.log("播放需要用户交互")); addLog('video_control', '播放视频'); feedbackMsg.innerHTML = '▶️ 视频已播放'; setTimeout(() => { if (feedbackMsg.innerHTML === '▶️ 视频已播放') feedbackMsg.innerHTML = ''; }, 1000); } }
 
         function parseSceneFromInput(prompt) {
             const lower = prompt.toLowerCase();
@@ -979,49 +1004,7 @@
             return 'garden';
         }
 
-        // ==================== 根据角色显示/隐藏界面 ====================
-        function initByRole() {
-            if (currentUser.role === 'child') {
-                const assessmentSection = document.getElementById('assessmentSection');
-                if (assessmentSection) {
-                    assessmentSection.style.display = 'none';
-                }
-                if (currentUser.progress) {
-                    Object.assign(completion, currentUser.progress);
-                    if (completion[currentScene] && completionSpan) {
-                        completionSpan.innerText = completion[currentScene];
-                    }
-                }
-            } else {
-                const assessmentSection = document.getElementById('assessmentSection');
-                if (assessmentSection) {
-                    assessmentSection.style.display = 'block';
-                }
-            }
-        }
-
-        async function loadChildList() {
-            try {
-                const response = await fetch(`${API_BASE}/api/child-list/${currentUser.user_id}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const data = await response.json();
-                if (data.success && data.children && data.children.length > 0) {
-                    const childSelector = document.createElement('div');
-                    childSelector.className = 'child-selector';
-                    childSelector.innerHTML = `
-                    <label>选择患儿：</label>
-                    <select id="childSelect">
-                        ${data.children.map(c => `<option value="${c.user_id}">${c.child_name || c.username}</option>`).join('')}
-                    </select>
-                `;
-                    document.querySelector('.header').appendChild(childSelector);
-                }
-            } catch (error) {
-                console.error('加载患儿列表失败:', error);
-            }
-        }
-
+        // AI辅助生成：康复评估量表逻辑
         // ==================== 康复评估模块 ====================
         const scaleQuestions = {
             ABC: [
@@ -1042,61 +1025,48 @@
 
         function initScaleQuestions() {
             const abcContainer = document.getElementById("ABC-questions");
-            if (abcContainer) {
-                abcContainer.innerHTML = '';
-                scaleQuestions.ABC.forEach((item, index) => {
-                    const div = document.createElement("div");
-                    div.innerHTML = `<label style="display: inline-block; width: 200px;">${index + 1}. ${item.q}：</label>
-                    <select class="abc-score" data-index="${index}">
-                        <option value="0">无(0分)</option>
-                        <option value="1">轻微(1分)</option>
-                        <option value="2">明显(2分)</option>
-                        <option value="3">严重(3分)</option>
-                    </select>`;
-                    abcContainer.appendChild(div);
-                });
-            }
+            scaleQuestions.ABC.forEach((item, index) => {
+                const div = document.createElement("div");
+                div.innerHTML = `<label style="display: inline-block; width: 200px;">${index + 1}. ${item.q}：</label>
+                <select class="abc-score" data-index="${index}">
+                    <option value="0">无(0分)</option>
+                    <option value="1">轻微(1分)</option>
+                    <option value="2">明显(2分)</option>
+                    <option value="3">严重(3分)</option>
+                </select>`;
+                abcContainer.appendChild(div);
+            });
 
             const carsContainer = document.getElementById("CARS-questions");
-            if (carsContainer) {
-                carsContainer.innerHTML = '';
-                scaleQuestions.CARS.forEach((item, index) => {
-                    const div = document.createElement("div");
-                    div.innerHTML = `<label style="display: inline-block; width: 140px;">${index + 1}. ${item.q}：</label>
-                    <select class="cars-score" data-index="${index}">
-                        <option value="0">正常(0分)</option>
-                        <option value="1">轻微异常(1分)</option>
-                        <option value="2">中度异常(2分)</option>
-                        <option value="3">重度异常(3分)</option>
-                        <option value="4">极重度异常(4分)</option>
-                    </select>`;
-                    carsContainer.appendChild(div);
-                });
-            }
+            scaleQuestions.CARS.forEach((item, index) => {
+                const div = document.createElement("div");
+                div.innerHTML = `<label style="display: inline-block; width: 140px;">${index + 1}. ${item.q}：</label>
+                <select class="cars-score" data-index="${index}">
+                    <option value="0">正常(0分)</option>
+                    <option value="1">轻微异常(1分)</option>
+                    <option value="2">中度异常(2分)</option>
+                    <option value="3">重度异常(3分)</option>
+                    <option value="4">极重度异常(4分)</option>
+                </select>`;
+                carsContainer.appendChild(div);
+            });
 
             const pep3Container = document.getElementById("PEP3-questions");
-            if (pep3Container) {
-                pep3Container.innerHTML = '';
-                scaleQuestions.PEP3.forEach((item, index) => {
-                    const div = document.createElement("div");
-                    div.innerHTML = `<label style="display: inline-block; width: 220px;">${index + 1}. ${item.q}：</label>
-                    <select class="pep3-score" data-index="${index}">
-                        <option value="0">未掌握(0分)</option>
-                        <option value="1">部分掌握(1分)</option>
-                        <option value="2">完全掌握(2分)</option>
-                    </select>`;
-                    pep3Container.appendChild(div);
-                });
-            }
+            scaleQuestions.PEP3.forEach((item, index) => {
+                const div = document.createElement("div");
+                div.innerHTML = `<label style="display: inline-block; width: 220px;">${index + 1}. ${item.q}：</label>
+                <select class="pep3-score" data-index="${index}">
+                    <option value="0">未掌握(0分)</option>
+                    <option value="1">部分掌握(1分)</option>
+                    <option value="2">完全掌握(2分)</option>
+                </select>`;
+                pep3Container.appendChild(div);
+            });
 
-            const scaleSelector = document.getElementById("scale-selector");
-            if (scaleSelector) {
-                scaleSelector.addEventListener("change", function (e) {
-                    document.querySelectorAll(".scale-content").forEach(el => el.style.display = "none");
-                    const target = document.getElementById(`${e.target.value}-scale`);
-                    if (target) target.style.display = "block";
-                });
-            }
+            document.getElementById("scale-selector").addEventListener("change", function (e) {
+                document.querySelectorAll(".scale-content").forEach(el => el.style.display = "none");
+                document.getElementById(`${e.target.value}-scale`).style.display = "block";
+            });
         }
 
         function calculateScaleScore() {
@@ -1107,21 +1077,21 @@
                 document.getElementById("ABC-total").textContent = total;
                 document.getElementById("ABC-level").textContent = level;
                 document.getElementById("ABC-result").style.display = "block";
-                if (feedbackMsg) feedbackMsg.innerHTML = `📊 ABC量表得分：${total}分 - ${level}`;
+                feedbackMsg.innerHTML = `📊 ABC量表得分：${total}分 - ${level}`;
             } else if (selectedScale === "CARS") {
                 let total = 0; document.querySelectorAll(".cars-score").forEach(s => total += parseInt(s.value));
                 let level = total >= 42 ? "🔴 重度孤独症（需要高强度干预）" : (total >= 36 ? "🟠 中度孤独症（需要专业干预）" : (total >= 28 ? "🟡 轻度孤独症（建议康复训练）" : (total >= 20 ? "🟢 轻度倾向（建议观察）" : "✅ 无明显孤独症特征")));
                 document.getElementById("CARS-total").textContent = total;
                 document.getElementById("CARS-level").textContent = level;
                 document.getElementById("CARS-result").style.display = "block";
-                if (feedbackMsg) feedbackMsg.innerHTML = `📊 CARS量表得分：${total}分 - ${level}`;
+                feedbackMsg.innerHTML = `📊 CARS量表得分：${total}分 - ${level}`;
             } else if (selectedScale === "PEP3") {
                 let total = 0; document.querySelectorAll(".pep3-score").forEach(s => total += parseInt(s.value));
                 let level = total >= 12 ? "🟢 能力良好（发展均衡，继续保持）" : (total >= 7 ? "🟡 能力中等（部分领域需要加强）" : "🔴 能力较弱（需要重点干预训练）");
                 document.getElementById("PEP3-total").textContent = total;
                 document.getElementById("PEP3-level").textContent = level;
                 document.getElementById("PEP3-result").style.display = "block";
-                if (feedbackMsg) feedbackMsg.innerHTML = `📊 PEP3量表得分：${total}分 - ${level}`;
+                feedbackMsg.innerHTML = `📊 PEP3量表得分：${total}分 - ${level}`;
             }
         }
 
@@ -1144,6 +1114,7 @@
         }
 
         async function saveTrainRecord() {
+            // 获取表单数据
             const dateInput = document.getElementById("record-date");
             const sceneSelect = document.getElementById("record-scene");
             const participationInput = document.getElementById("record-participation");
@@ -1151,39 +1122,45 @@
             const completionInput = document.getElementById("record-completion");
             const remarkInput = document.getElementById("record-remark");
 
-            if (!dateInput || !dateInput.value) {
+            const trainingDate = dateInput.value;
+            if (!trainingDate) {
                 alert("请选择训练日期！");
                 return;
             }
 
+            // 构建记录对象（字段名与表格渲染匹配）
             const newRecord = {
-                date: dateInput.value,
+                date: trainingDate,
                 scene: sceneSelect.value,
                 sceneName: sceneSelect.options[sceneSelect.selectedIndex].text,
-                participation: participationInput ? participationInput.value : 0,
+                participation: participationInput.value,
                 mood: moodSelect.value,
                 moodName: moodSelect.options[moodSelect.selectedIndex].text,
-                completion: completionInput ? completionInput.value : 0,
-                remark: remarkInput ? remarkInput.value : "",
+                completion: completionInput.value,
+                remark: remarkInput.value,
                 timestamp: new Date().toISOString()
             };
 
             console.log("保存记录:", newRecord);
 
+            // 1. 先保存到 localStorage
             let existingRecords = JSON.parse(localStorage.getItem("trainRecords") || "[]");
             existingRecords.push(newRecord);
             localStorage.setItem("trainRecords", JSON.stringify(existingRecords));
 
+            // 2. 刷新前端表格
             refreshRecordList();
             refreshReportData();
 
-            if (dateInput) dateInput.value = "";
-            if (participationInput) participationInput.value = "0";
-            if (completionInput) completionInput.value = "0";
-            if (remarkInput) remarkInput.value = "";
+            // 3. 清空表单
+            dateInput.value = "";
+            participationInput.value = "0";
+            completionInput.value = "0";
+            remarkInput.value = "";
 
             alert("训练记录保存成功！");
 
+            // 4. 尝试同步到后端（可选，不影响本地显示）
             try {
                 await fetch(`${API_BASE}/api/save-training-record`, {
                     method: 'POST',
@@ -1214,13 +1191,13 @@
                 tbody.innerHTML = "";
                 recordList.forEach((item, index) => {
                     const tr = document.createElement("tr");
-                    tr.innerHTML = `<td>${item.date}</td><td>${item.sceneName}</td><td>${item.participation}</td><td>${item.moodName}</td><td>${item.completion}</td><td><button onclick="window.deleteRecord(${index})" style="padding:4px 8px; background:#f56c6c; color:white; border:none; border-radius:4px; cursor:pointer;">删除</button></td>`;
+                    tr.innerHTML = `<td>${item.date}</td><td>${item.sceneName}</td><td>${item.participation}</td><td>${item.moodName}</td><td>${item.completion}</td><td><button onclick="deleteRecord(${index})" style="padding:4px 8px; background:#f56c6c; color:white; border:none; border-radius:4px; cursor:pointer;">删除</button></td>`;
                     tbody.appendChild(tr);
                 });
             }
         }
 
-        window.deleteRecord = function (index) {
+        function deleteRecord(index) {
             const recordList = JSON.parse(localStorage.getItem("trainRecords") || "[]");
             recordList.splice(index, 1);
             localStorage.setItem("trainRecords", JSON.stringify(recordList));
@@ -1242,8 +1219,8 @@
                 recordList.slice().reverse().forEach(item => { const tr = document.createElement("tr"); tr.innerHTML = `<td>${item.date}</td><td>${item.sceneName}</td><td>${item.participation}</td><td>${item.moodName}</td><td>${item.completion}</td>`; recordTbody.appendChild(tr); });
             }
         }
-
         function generatePDFReport() {
+            // 极简校验，确保jsPDF加载完成
             if (!window.jspdf || !window.jspdf.jsPDF) {
                 alert("jsPDF未加载！请检查头部的jsPDF脚本是否正确");
                 return;
@@ -1251,15 +1228,17 @@
             try {
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF();
+                // 跳过字体配置，先保证能导出（中文用拼音/英文过渡，先验证功能）
                 doc.setFontSize(18);
                 doc.text("Xingyu Shijie · 4D Dynamic Rehabilitation Scene Generator", 14, 20);
                 doc.setFontSize(12);
                 doc.text(`Evaluation Report`, 14, 30);
                 doc.text(`Generated at: ${new Date().toLocaleString()}`, 14, 38);
 
+                // 数据读取和表格逻辑完全不变
                 const scaleList = JSON.parse(localStorage.getItem("scaleResults") || "[]");
                 const recordList = JSON.parse(localStorage.getItem("trainRecords") || "[]");
-                const advice = document.getElementById("rehab-advice") ? document.getElementById("rehab-advice").value : "No advice";
+                const advice = document.getElementById("rehab-advice").value || "No advice";
 
                 doc.text("1. Scale Evaluation Results", 14, 52);
                 const scaleHead = [["Type", "Score", "Level", "Time"]];
@@ -1274,14 +1253,15 @@
                 doc.text("3. Rehabilitation Advice", 14, doc.lastAutoTable.finalY + 12);
                 doc.text(advice, 14, doc.lastAutoTable.finalY + 22, { maxWidth: 180 });
 
+                // 强制触发下载
                 doc.save(`康复评估报告_${new Date().getTime()}.pdf`);
-                alert("PDF导出成功！");
+                alert("PDF导出成功！（当前为英文版本，功能验证通过后可换回中文）");
             } catch (e) {
-                alert("导出失败：" + e.message);
+                // 捕获错误，告诉你具体原因
+                alert("点击没反应的原因：" + e.message);
                 console.log("错误详情：", e);
             }
         }
-
         function initTabSwitch() {
             const tabs = document.querySelectorAll(".tab-btn");
             const contents = document.querySelectorAll(".tab-content");
@@ -1290,216 +1270,79 @@
                     tabs.forEach(t => { t.classList.remove("active"); t.style.background = "#fff"; t.style.color = "#333"; });
                     this.classList.add("active"); this.style.background = "#289672"; this.style.color = "#fff";
                     contents.forEach(content => content.style.display = "none");
-                    const targetTab = document.getElementById(`${this.dataset.tab}-tab`);
-                    if (targetTab) targetTab.style.display = "block";
+                    document.getElementById(`${this.dataset.tab}-tab`).style.display = "block";
                     if (this.dataset.tab === "report") refreshReportData();
                 });
             });
         }
 
-        function loadLocalData() {
-            refreshRecordList();
-            refreshReportData();
-            const saved = localStorage.getItem('scene_completion');
-            if (saved) Object.assign(completion, JSON.parse(saved));
-            const savedLogs = localStorage.getItem('rehab_logs');
-            if (savedLogs) trainingLogs = JSON.parse(savedLogs);
-        }
+        function loadLocalData() { refreshRecordList(); refreshReportData(); const saved = localStorage.getItem('scene_completion'); if (saved) Object.assign(completion, JSON.parse(saved)); const savedLogs = localStorage.getItem('rehab_logs'); if (savedLogs) trainingLogs = JSON.parse(savedLogs); }
+        function initStableConnection() { setInterval(() => { fetch("/api/generate-4d", { method: "OPTIONS" }).catch(() => { }); }, 30000); }
 
-        // ==================== 页面初始化 ====================
+        // AI辅助生成：页面初始化与事件绑定
         document.addEventListener('DOMContentLoaded', () => {
             initByRole();
             loadLocalData();
             switchScene('bus');
 
-            // 检测后端连接状态
-            async function checkBackendStatus() {
-                const statusSpan = document.getElementById('backendStatus');
-                try {
-                    const response = await fetch(`${API_BASE}/health`);
-                    if (response.ok) {
-                        if (statusSpan) statusSpan.innerHTML = '<span style="color:#289672;">✅ 后端已连接</span>';
-                        console.log('后端连接成功');
-                    } else {
-                        if (statusSpan) statusSpan.innerHTML = '<span style="color:#ef4444;">❌ 后端连接失败</span>';
-                    }
-                } catch (error) {
-                    if (statusSpan) statusSpan.innerHTML = '<span style="color:#ef4444;">❌ 后端未启动 (请运行 python main.py)</span>';
-                    console.log('后端连接失败:', error);
-                }
-            }
-
-            checkBackendStatus();
-            setInterval(checkBackendStatus, 10000);
-
-            // 场景切换按钮
             document.querySelectorAll('.scene-btn').forEach(btn => btn.addEventListener('click', () => switchScene(btn.dataset.scene)));
             document.querySelectorAll('.view-btn').forEach(btn => btn.addEventListener('click', () => jumpToView(btn.dataset.view)));
+            document.getElementById('pauseVideoBtn').addEventListener('click', pauseVideo);
+            document.getElementById('playVideoBtn').addEventListener('click', playVideo);
+            document.getElementById('taskCompleteBtn').addEventListener('click', completeTask);
+            document.getElementById('resetProgressBtn').addEventListener('click', resetProgress);
 
-            // 视频控制
-            const pauseBtn = document.getElementById('pauseVideoBtn');
-            const playBtn = document.getElementById('playVideoBtn');
-            const taskCompleteBtn = document.getElementById('taskCompleteBtn');
-            const resetProgressBtn = document.getElementById('resetProgressBtn');
-            if (pauseBtn) pauseBtn.addEventListener('click', pauseVideo);
-            if (playBtn) playBtn.addEventListener('click', playVideo);
-            if (taskCompleteBtn) taskCompleteBtn.addEventListener('click', completeTask);
-            if (resetProgressBtn) resetProgressBtn.addEventListener('click', resetProgress);
+            document.getElementById('generateSceneBtn').addEventListener('click', () => {
+                const voice = document.getElementById('voiceTextArea').value;
+                const text = document.getElementById('textInput').value;
+                const prompt = text || voice;
+                if (!prompt) { feedbackMsg.innerHTML = '⚠️ 请输入或说出场景描述'; return; }
+                const sceneType = parseSceneFromInput(prompt);
+                switchScene(sceneType);
+                document.querySelectorAll('.scene-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.scene === sceneType));
+                feedbackMsg.innerHTML = `✨ 根据"${prompt.substring(0, 40)}"生成${sceneDisplayName[sceneType]}`;
+                setTimeout(() => { if (feedbackMsg.innerHTML.includes("生成")) feedbackMsg.innerHTML = ''; }, 3000);
+            });
 
-            // 生成场景按钮 - 支持AI后端
-            const generateBtn = document.getElementById('generateSceneBtn');
-            if (generateBtn) {
-                generateBtn.addEventListener('click', async () => {
-                    const voice = document.getElementById('voiceTextArea') ? document.getElementById('voiceTextArea').value : '';
-                    const text = document.getElementById('textInput') ? document.getElementById('textInput').value : '';
-                    const prompt = text || voice;
-                    if (!prompt) {
-                        if (feedbackMsg) feedbackMsg.innerHTML = '⚠️ 请输入或说出场景描述';
-                        return;
-                    }
+            document.getElementById('calcScaleBtn').addEventListener('click', calculateScaleScore);
+            document.getElementById('saveScaleResultBtn').addEventListener('click', saveScaleResult);
+            document.getElementById('saveRecordBtn').addEventListener('click', saveTrainRecord);
+            document.getElementById('exportPDFBtn').addEventListener('click', generatePDFReport);
 
-                    const genMode = document.querySelector('input[name="genMode"]:checked') ? document.querySelector('input[name="genMode"]:checked').value : 'local';
-
-                    if (genMode === 'ai') {
-                        try {
-                            if (feedbackMsg) feedbackMsg.innerHTML = '🤖 AI正在生成场景...';
-                            const response = await fetch(`${API_BASE}/api/generate-4d`, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                },
-                                body: JSON.stringify({
-                                    prompt: prompt,
-                                    userId: currentUser?.user_id || 'guest'
-                                })
-                            });
-
-                            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
-                            const data = await response.json();
-                            if (data.success) {
-                                switchScene(data.scene_type);
-                                if (feedbackMsg) feedbackMsg.innerHTML = `✨ AI生成成功: ${data.message}`;
-                                setTimeout(() => { if (feedbackMsg && feedbackMsg.innerHTML.includes("成功")) feedbackMsg.innerHTML = ''; }, 3000);
-                            } else {
-                                const sceneType = parseSceneFromInput(prompt);
-                                switchScene(sceneType);
-                                if (feedbackMsg) feedbackMsg.innerHTML = `✨ 根据"${prompt.substring(0, 40)}"生成${sceneDisplayName[sceneType]}`;
-                                setTimeout(() => { if (feedbackMsg && feedbackMsg.innerHTML.includes("生成")) feedbackMsg.innerHTML = ''; }, 3000);
-                            }
-                        } catch (error) {
-                            console.error('AI生成失败:', error);
-                            const sceneType = parseSceneFromInput(prompt);
-                            switchScene(sceneType);
-                            if (feedbackMsg) feedbackMsg.innerHTML = `⚠️ AI连接失败，使用本地模式: ${sceneDisplayName[sceneType]}`;
-                            setTimeout(() => { if (feedbackMsg && feedbackMsg.innerHTML.includes("失败")) feedbackMsg.innerHTML = ''; }, 3000);
-                        }
-                    } else {
-                        const sceneType = parseSceneFromInput(prompt);
-                        switchScene(sceneType);
-                        document.querySelectorAll('.scene-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.scene === sceneType));
-                        if (feedbackMsg) feedbackMsg.innerHTML = `✨ 根据"${prompt.substring(0, 40)}"生成${sceneDisplayName[sceneType]}`;
-                        setTimeout(() => { if (feedbackMsg && feedbackMsg.innerHTML.includes("生成")) feedbackMsg.innerHTML = ''; }, 3000);
-                    }
-                });
-            }
-
-            // 评估模块按钮
-            const calcBtn = document.getElementById('calcScaleBtn');
-            const saveScaleBtn = document.getElementById('saveScaleResultBtn');
-            const saveRecordBtn = document.getElementById('saveRecordBtn');
-            const exportBtn = document.getElementById('exportPDFBtn');
-            if (calcBtn) calcBtn.addEventListener('click', calculateScaleScore);
-            if (saveScaleBtn) saveScaleBtn.addEventListener('click', saveScaleResult);
-            if (saveRecordBtn) saveRecordBtn.addEventListener('click', saveTrainRecord);
-            if (exportBtn) exportBtn.addEventListener('click', generatePDFReport);
-
-            // 手绘板
             const canvas = document.getElementById('sketchCanvas');
-            if (canvas) {
-                const ctx = canvas.getContext('2d');
-                canvas.width = 400; canvas.height = 160;
-                ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.strokeStyle = '#2c3e66'; ctx.lineWidth = 2;
-                let drawing = false;
-                const getCoords = (e) => {
-                    const rect = canvas.getBoundingClientRect();
-                    const scaleX = canvas.width / rect.width;
-                    const scaleY = canvas.height / rect.height;
-                    let cx, cy;
-                    if (e.touches) { cx = e.touches[0].clientX; cy = e.touches[0].clientY; }
-                    else { cx = e.clientX; cy = e.clientY; }
-                    return { x: (cx - rect.left) * scaleX, y: (cy - rect.top) * scaleY };
-                };
-                canvas.addEventListener('mousedown', () => drawing = true);
-                canvas.addEventListener('mouseup', () => { drawing = false; ctx.beginPath(); });
-                canvas.addEventListener('mousemove', (e) => { if (drawing) { const p = getCoords(e); ctx.lineTo(p.x, p.y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(p.x, p.y); } });
-                const clearBtn = document.getElementById('clearCanvasBtn');
-                if (clearBtn) {
-                    clearBtn.addEventListener('click', () => { ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.beginPath(); if (feedbackMsg) { feedbackMsg.innerHTML = '✏️ 画板已清空'; setTimeout(() => { if (feedbackMsg.innerHTML === '✏️ 画板已清空') feedbackMsg.innerHTML = ''; }, 1000); } });
-                }
-            }
+            const ctx = canvas.getContext('2d');
+            canvas.width = 400; canvas.height = 160;
+            ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = '#2c3e66'; ctx.lineWidth = 2;
+            let drawing = false;
+            const getCoords = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                let cx, cy;
+                if (e.touches) { cx = e.touches[0].clientX; cy = e.touches[0].clientY; }
+                else { cx = e.clientX; cy = e.clientY; }
+                return { x: (cx - rect.left) * scaleX, y: (cy - rect.top) * scaleY };
+            };
+            canvas.addEventListener('mousedown', () => drawing = true);
+            canvas.addEventListener('mouseup', () => { drawing = false; ctx.beginPath(); });
+            canvas.addEventListener('mousemove', (e) => { if (drawing) { const p = getCoords(e); ctx.lineTo(p.x, p.y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(p.x, p.y); } });
+            document.getElementById('clearCanvasBtn').addEventListener('click', () => { ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.beginPath(); feedbackMsg.innerHTML = '✏️ 画板已清空'; setTimeout(() => { if (feedbackMsg.innerHTML === '✏️ 画板已清空') feedbackMsg.innerHTML = ''; }, 1000); });
 
-            // 语音识别
-            // ==================== 语音识别 ====================
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             let recognition = null;
-            let isRecognizing = false;  // 添加状态标记
-
             if (SpeechRecognition) {
                 recognition = new SpeechRecognition();
                 recognition.lang = 'zh-CN';
-                recognition.continuous = false;  // 单次识别
-                recognition.interimResults = false;  // 只要最终结果
-
-                recognition.onresult = (e) => {
-                    const text = e.results[0][0].transcript;
-                    document.getElementById('voiceTextArea').value = text;
-                    document.getElementById('recordingStatus').innerText = '✅ 完成';
-                    isRecognizing = false;
-                    console.log('识别结果:', text);
-                };
-
-                recognition.onerror = (e) => {
-                    console.log('识别错误:', e.error);
-                    document.getElementById('recordingStatus').innerText = '❌ 识别失败';
-                    isRecognizing = false;
-                };
-
-                recognition.onend = () => {
-                    console.log('识别结束');
-                    if (isRecognizing) {
-                        document.getElementById('recordingStatus').innerText = '未录音';
-                        isRecognizing = false;
-                    }
-                };
+                recognition.onresult = (e) => { document.getElementById('voiceTextArea').value = e.results[0][0].transcript; document.getElementById('recordingStatus').innerText = '✅ 完成'; };
+                recognition.onerror = () => { document.getElementById('recordingStatus').innerText = '识别失败'; };
             }
+            document.getElementById('recordBtn').addEventListener('click', () => { if (recognition) { recognition.start(); document.getElementById('recordingStatus').innerText = '🎙️ 录音中...'; } else { alert('浏览器不支持语音识别'); } });
 
-            document.getElementById('recordBtn').addEventListener('click', () => {
-                if (!recognition) {
-                    alert('浏览器不支持语音识别');
-                    return;
-                }
-
-                // 如果正在识别中，先停止
-                if (isRecognizing) {
-                    recognition.stop();
-                    document.getElementById('recordingStatus').innerText = '未录音';
-                    isRecognizing = false;
-                    return;
-                }
-
-                try {
-                    recognition.start();
-                    isRecognizing = true;
-                    document.getElementById('recordingStatus').innerText = '🎙️ 录音中...';
-                    console.log('开始录音');
-                } catch (e) {
-                    console.log('启动失败:', e);
-                    document.getElementById('recordingStatus').innerText = '请重试';
-                    isRecognizing = false;
-                }
-            });
+            initScaleQuestions();
+            initTabSwitch();
+            initStableConnection();
+            document.getElementById('backendStatus').innerHTML = '<span style="color:#289672;">● 模拟模式</span>';
         });
     </script>
 </body>
